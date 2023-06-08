@@ -28,6 +28,9 @@ const UserSchema = Schema({
 		type: Boolean,
 		default: false,
 	},
+	picture: {
+		type: String,
+	},
 });
 
 UserSchema.methods.toJSON = function () {

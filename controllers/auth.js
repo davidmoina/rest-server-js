@@ -2,6 +2,7 @@ const { request, response } = require('express');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const { generateJWT } = require('../helpers/generate-jwt');
+const { googleVerify } = require('../helpers/google-verify');
 
 const login = async (req = request, res = response) => {
 	const { email, password } = req.body;
@@ -42,6 +43,53 @@ const login = async (req = request, res = response) => {
 	}
 };
 
+const googleSingIn = async (req = request, res = response) => {
+	const { id_token } = req.body;
+
+	try {
+		const { name, email, picture } = await googleVerify(id_token);
+
+		//verificar si el correo ya existe
+		let user = await User.findOne({ email });
+
+		if (!user) {
+			// si no existe se crea el usuario
+			const data = {
+				name,
+				email,
+				password: '',
+				picture,
+				google: true,
+				role: 'USER_ROLE',
+			};
+
+			user = new User(data);
+			await user.save();
+		}
+
+		// si el usuario en DB
+		if (!user.status) {
+			res.status(401).json({
+				msg: 'Hable con el administrador, usuario bloqueado',
+			});
+		}
+
+		// generar el JWT
+		const token = await generateJWT(user.id);
+
+		res.json({
+			user,
+			token,
+		});
+	} catch (error) {
+		console.log(error);
+		return res.status(400).json({
+			msg: 'El token no se pudo verificar',
+		});
+	}
+};
+
 module.exports = {
 	login,
+	googleSingIn,
 };
